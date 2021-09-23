@@ -8,8 +8,6 @@ import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.sun.jdi.Type;
-
 public class FastaSequence
 {	
 	private final String header;
