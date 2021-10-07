@@ -29,14 +29,6 @@ public class WeightedMolecule
 			throw new Exception("weights must add up to 1");
 		}
 		
-		// create array of upper end of range for each weight (sum of all previous weights and self)
-		float[] weightRange = new float[weights.length];
-		weightRange[0] = weights[0];
-		for (int i=1; i<weights.length; i++)
-		{
-			weightRange[i] = weightRange[i-1] + weights[i];
-		} 
-		
 		Random random = new Random();
 		
 		// create sequence
@@ -45,14 +37,20 @@ public class WeightedMolecule
 		for (int i=0; i<length; i++)
 		{
 			float r = random.nextFloat();
+			boolean didAppend = false;
 			for (int x=0; x<length; x++)
 			{
-				if (r < weightRange[x])
+				r = r - weights[x];
+				if (r < 0)
 				{
 					b.append(alphabet[x]);
+					didAppend = true;
 					break;
 				}
-			}				
+			}
+			// if (by rounding error) b.append wasn't invoked, append last character in alphabet
+			if (! didAppend)
+				b.append(alphabet[-1]);
 		}
 		
 		return b.toString();
