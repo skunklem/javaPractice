@@ -25,6 +25,11 @@ public class AAQuizGUI extends JFrame
 {
 	/**
 	 * GUI to run amino acid quiz for 30 seconds
+	 * 
+	 * potential improvements:
+	 * 	make correct box green after correct answer
+	 * 	make incorrect box red when incorrect
+	 * 
 	 */
 	private static final long serialVersionUID = -1586708998847307196L;
 	private int numCorrect;
@@ -41,7 +46,7 @@ public class AAQuizGUI extends JFrame
 	private JTextField correctCounts = new JTextField();
 	private JTextField incorrectCounts = new JTextField();
 	private JTextField aaText = new JTextField("Amino acid:");
-	private JTextField guessText = new JTextField("Your guess:");
+	private JTextField guessText = new JTextField("Input the one-letter code below");
 	private JTextField guessBox = new JTextField();
 	
 	// assign important variables
@@ -142,6 +147,7 @@ public class AAQuizGUI extends JFrame
 					String guess;
 					while(true)
 					{
+						guessBox.requestFocusInWindow();
 						guess = guessBox.getText().toUpperCase();
 						if (! guess.equals(""))
 						{
@@ -220,7 +226,6 @@ public class AAQuizGUI extends JFrame
 			incorrectCounts.setText("# incorrect:\t" + numIncorrect);
 			correctCounts.setText("# correct:\t" + numCorrect);
 			guessBox.setEditable(true);
-			guessBox.requestFocusInWindow();
 			
 			new Thread( new startTimer()).start();
 			
@@ -299,7 +304,7 @@ public class AAQuizGUI extends JFrame
 		aaPrompt.setText("Press start to begin.");
 		aaPrompt.setEditable(false);
 		panel.add(guessBox);
-		guessBox.setText("");
+		guessBox.setText("...your guess...");
 		guessBox.setEditable(false);
 		return panel;
 	}
