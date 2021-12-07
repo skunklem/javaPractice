@@ -4,15 +4,11 @@ import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -37,10 +33,12 @@ public class SlowGUI2 extends JFrame
 	private volatile static double timeFor1thread;
 	protected volatile static boolean doingSingleThreadComparison = false;
 	protected volatile static boolean comparisonIsComplete = false;
+//	protected static 
 //	public volatile static boolean cancel = false;
 //	private final static AtomicBoolean cancel = new AtomicBoolean(false);
 	private volatile static boolean doneFindingPrimes;
-	private volatile static String report = "";
+	private volatile static String report;
+	private volatile static String finalReport;
 	private volatile static double totalTime = 0;
 	private volatile static long startTime = 0;
 	private volatile static Set<Integer> nums_checked = Collections.synchronizedSet(new HashSet<>());
@@ -52,69 +50,71 @@ public class SlowGUI2 extends JFrame
 	private volatile static JButton startButton = new JButton("Start");
 	private volatile static JTextField threadNumBox = new JTextField("5");
 	private volatile static JTextField threadDirections = new JTextField("# background threads");
-	private volatile static JTextField highNumBox = new JTextField("50000");
+	private volatile static JTextField highNumBox = new JTextField("2000");
 	private volatile static JTextField highNumDirections = new JTextField("Pick a high number");
 	private volatile static JCheckBox compareSpeedupBox = new JCheckBox();
 	private volatile static JTextField compareBoxDirections = new JTextField("Compare with 1 thread");
 	private volatile static JTextArea reportBox = new JTextArea("\n\tReset the above parameters or hit Start");
 	
 	
+	private static void writeFinalReport()
+	{
+		if (compareSpeedupBox.isSelected())
+		{
+			double ratio = timeFor1thread/totalTime;
+			System.out.println(ratio);
+			finalReport = "Comparison complete\n"
+					+ "\tThreads\t1\t" + num_threads + "\n"
+					+ "\tTime (sec)\t" + timeFor1thread + "\t" + totalTime + "\n"
+					+ "\tRatio\t" + ratio + " : 1";
+		}
+		else
+		{
+			int numsChecked = nums_checked.size() + 1; //(+1 because 1 isn't included in the Set)
+			if (doneFindingPrimes) finalReport = "Run completed\n";
+			else finalReport = "Run canceled\n";
+			finalReport += "\ttime passed: " + totalTime + " seconds\n"
+						+ "\tnumbers checked: " + numsChecked + "\n"
+						+ "\tprimes found: " + primes.size() + "\n";
+		}
+		SwingUtilities.invokeLater(new Runnable()
+		{						
+			@Override
+			public void run() {
+				// ensure this is the last report sent out
+				do {
+					System.out.println("HERE");
+					if (! reportBox.isEditable()) reportBox.setEditable(true);
+					reportBox.setText(finalReport);
+					reportBox.setEditable(false);
+				} while (! reportBox.getText().equals(finalReport));							
+			} 
+		});
+	}
+	
 	private static class ReportWriter implements Runnable
 	{
 		@Override
 		public void run()
 		{
-//			while(! cancel)
-			while(true)
+			while(! cancel)
 			{
 				try
 				{
-					// set report text
-					if ((compareSpeedupBox.isSelected()) & (comparisonIsComplete))
-					{
-						System.out.println("HEREREREEE");
-						System.out.println(timeFor1thread);
-						System.out.println(totalTime);
-						double ratio = timeFor1thread/totalTime;
-						System.out.println(ratio);
-						report = "Comparison complete\n"
-								+ "\tThreads\t1\t" + num_threads + "\n"
-								+ "\tTime (s)\t" + timeFor1thread + "\t" + totalTime + "\n"
-								+ "\tRatio\t" + ratio + " : 1";
-//						comparisonIsComplete = false; // reset
-					}
-					else // if not comparing threaded speedup or if in the middle of a run...
-					{
-						if (cancel)
-	//					if (cancel.get())
-						{
-							if (doneFindingPrimes) report = "Run completed\n";
-							else report = "Run canceled\n";
-							report += "\ttime passed: " + totalTime + " seconds\n";
-						}
-						else
-						{
-							long timeSoFar = System.currentTimeMillis()-startTime;
-							report = "Running...\n"
-									+ "\ttime passed: " + timeSoFar/1000 + " seconds\n";
-						}
-						int numsChecked = nums_checked.size() + 1; //(+1 because 1 isn't included in the Set)
-						report += "\tnumbers checked: " + numsChecked + "\n";
-						report += "\tprimes found: " + primes.size() + "\n";
-					}
+					long timeSoFar = System.currentTimeMillis()-startTime;
+					int numsChecked = nums_checked.size() + 1; //(+1 because 1 isn't included in the Set)
+					report = "Running...\n"
+							+ "\ttime passed: " + timeSoFar/1000 + " seconds\n"
+							+ "\tnumbers checked: " + numsChecked + "\n"
+							+ "\tprimes found: " + primes.size() + "\n";
 					SwingUtilities.invokeLater(new Runnable()
 					{						
 						@Override
 						public void run() {
-							reportBox.setText(report);							
+							if (reportBox.isEditable()) reportBox.setText(report);
 						}
 					});
-					if (cancel)
-//					if (cancel.get())
-					{
-						break;
-					}
-					Thread.sleep(500);
+					Thread.sleep(500); // no point in updating report any faster
 				} 
 				catch (Exception e) 
 				{
@@ -125,80 +125,162 @@ public class SlowGUI2 extends JFrame
 		}
 	}
 	
+
+	
+//	private static class StartSlowStep implements Runnable
+//	{		
+//		@Override
+//		public void run()
+//		{
+//				try
+//				{					
+//					System.out.println("New run with Threads: " + num_threads+ "\tHighNum: "+stopping_point);
+//					
+//					Semaphore semaphore = new Semaphore(num_threads);
+//					for (int workerNum=0; workerNum<num_threads; workerNum++)
+//					{
+//						semaphore.acquire();
+//						System.out.println("Thread " + workerNum +" in StartSlowStep");
+//						PrimeFindingWorker pfw = new PrimeFindingWorker(workerNum, num_threads, primes, semaphore, stopping_point, nums_checked);
+//						new Thread(pfw).start();						
+//					}
+//					
+//					new Thread(new ReportWriter()).start();
+//					
+//					int returnedWorkers = 0;
+//					
+//					while (returnedWorkers < num_threads)
+//					{
+//						semaphore.acquire();
+//						returnedWorkers++;
+//					}
+//					long endTime = System.currentTimeMillis();
+//					totalTime = (endTime-startTime)/1000.;
+//										
+//					if (compareSpeedupBox.isSelected())
+//					{
+//						timeFor1thread = 0.;
+//						startTime = System.currentTimeMillis();
+//						Semaphore semaphore1 = new Semaphore(1);
+//						System.out.println("Avail perm " + semaphore1.availablePermits());
+//
+//						System.out.println("New single threaded run");
+//						new Thread(new PrimeFindingWorker(0,1,primes1,semaphore1,stopping_point,numsChecked1)).start();
+////						semaphore1.acquire();
+//						returnedWorkers = 0;
+//						System.out.println("Avail perm " + semaphore1.availablePermits());
+//						
+//						while (returnedWorkers < 1)
+//						{
+//							semaphore1.acquire();
+//							returnedWorkers++;
+//						}
+//						timeFor1thread = (System.currentTimeMillis()-startTime)/1000;
+//						System.out.println(System.currentTimeMillis() + " " + startTime);
+//						System.out.println(timeFor1thread + " seconds");
+//					}					
+//					doneFindingPrimes = true;
+//					System.out.println("All workers done");
+//					cancelButton.doClick();
+//
+//					// make sure this report comes after other report
+//					Thread.sleep(200);
+//					writeFinalReport();
+//					
+//					// sanity checks
+//					if ((compareSpeedupBox.isSelected()))
+//					{
+////						System.out.println("Primes found: " + primes1.size() +" "+ primes.size());
+//						if (! (primes1.size()==primes.size())) System.out.println("Different numbers of primes found. One run may not have completed");
+//					}
+//					else System.out.println("Not a comparison run"); //remove
+//					
+//					
+//				} catch (Exception e) {
+//					e.printStackTrace();
+//					cancelButton.doClick();
+//				}
+//		}
+//	}
+
 	private static class StartSlowStep implements Runnable
 	{		
 		@Override
 		public void run()
 		{
-			while(! cancel)
-//			while(! cancel.get())
+			try
 			{
-				try
-				{					
+				int[] numbers = {0,0};
+				if (compareSpeedupBox.isSelected()) numbers[0] = 1;
+				numbers[1] = num_threads;
+				for (int numberOfWorkers : numbers)
+				{
+					if (numberOfWorkers == 0) continue; // only do runs that have more than 1
+					System.out.println("New run with Threads: " + numberOfWorkers+ "\tHighNum: "+stopping_point);
 					
-//					startTime = System.currentTimeMillis();
-					
-					if (compareSpeedupBox.isSelected())
-					{
-						timeFor1thread = 0;
-						startTime = System.currentTimeMillis();
-						Semaphore semaphore1 = new Semaphore(1);
-						System.out.println("New single threaded run");
-						new Thread(new PrimeFindingWorker(0,1,primes1,semaphore1,stopping_point,numsChecked1)).start();
-						semaphore1.acquire();
-						timeFor1thread = System.currentTimeMillis()-startTime;
-						System.out.println(timeFor1thread/1000 + " seconds");
-					}
-//					System.exit(1);
-//					Thread.sleep(100000);
-					System.out.println("New run with " + num_threads+ " thread");
-					Semaphore semaphore = new Semaphore(num_threads);
-					for (int workerNum=0; workerNum<num_threads; workerNum++)
+					Semaphore semaphore = new Semaphore(numberOfWorkers);
+					long startTime = System.currentTimeMillis();
+					for (int workerNum=0; workerNum<numberOfWorkers; workerNum++)
 					{
 						semaphore.acquire();
 						System.out.println("Thread " + workerNum +" in StartSlowStep");
-						PrimeFindingWorker pfw = new PrimeFindingWorker(workerNum, num_threads, primes, semaphore, stopping_point, nums_checked);
-						new Thread(pfw).start();						
+						if (numberOfWorkers == 1)
+						{
+							new Thread(new PrimeFindingWorker(0,1,primes1,semaphore,stopping_point,numsChecked1)).start();
+						}
+						else
+						{
+							new Thread(new PrimeFindingWorker(workerNum, numberOfWorkers, primes, semaphore, stopping_point, nums_checked)).start();
+						}											
 					}
 					
 					new Thread(new ReportWriter()).start();
 					
 					int returnedWorkers = 0;
 					
-					while (returnedWorkers < num_threads)
+					while (returnedWorkers < numberOfWorkers)
 					{
 						semaphore.acquire();
 						returnedWorkers++;
 					}
-					
-					if (cancel) break;
-//					if (cancel.get());
-					
-					doneFindingPrimes = true;
-					if ((compareSpeedupBox.isSelected()) & primes1.size()==primes.size())
-						comparisonIsComplete = true;
-					else
-						System.out.println("primes1 was not filled");
-					
-					cancelButton.doClick();
-					
-//					long endTime = System.currentTimeMillis();
-//					totalTime = endTime-startTime;
-//					System.out.println(startTime);
-//					System.out.println(totalTime);
-//					int numFound = primes.size();
-					
-//					System.out.println("Found "+ numPrimesFound + " primes in "+ totalTime + " ms.");
-					
-				} catch (Exception e) {
-					e.printStackTrace();
-					cancelButton.doClick();
-//					cancel = true;
-//					System.exit(1);
+					long endTime = System.currentTimeMillis();
+					if ((numberOfWorkers == 1) & (timeFor1thread == 0))
+					{
+						timeFor1thread = (endTime-startTime)/1000.;
+						System.out.println(timeFor1thread + " seconds");
+						System.out.println(numsChecked1.size() +1 + " numbers checked");
+					}
+					else 
+					{
+						totalTime = (endTime-startTime)/1000.;
+						System.out.println(totalTime + " seconds");
+						System.out.println(nums_checked.size() +1 + " numbers checked");
+					}
 				}
+				doneFindingPrimes = true;
+				System.out.println("All workers done");
+				cancelButton.doClick();
+
+				// make sure this report comes after other report
+				Thread.sleep(200);
+				writeFinalReport();
+				
+				// sanity checks
+				if ((compareSpeedupBox.isSelected()))
+				{
+//					System.out.println("Primes found: " + primes1.size() +" "+ primes.size());
+					if (! (primes1.size()==primes.size())) System.out.println("Different numbers of primes found. One run may not have completed");
+				}
+				else System.out.println("Not a comparison run"); //remove
+			}
+			catch (Exception e)
+			{
+				e.printStackTrace();
+				cancelButton.doClick();
 			}
 		}
 	}
+
 	
 	// gui prep
 	private JPanel bottomPanel()
@@ -216,7 +298,7 @@ public class SlowGUI2 extends JFrame
 				cancel = false;
 //				cancel.set(false);
 				PrimeFindingWorker.cancel = false;
-				comparisonIsComplete = false;
+//				comparisonIsComplete = false;
 				primes = new ConcurrentHashMap<Integer,Boolean>();
 				primes1 = new ConcurrentHashMap<Integer,Boolean>();
 				nums_checked = Collections.synchronizedSet(new HashSet<>());
@@ -224,6 +306,7 @@ public class SlowGUI2 extends JFrame
 				startButton.setEnabled(false);
 				cancelButton.setEnabled(true);
 				doneFindingPrimes = false;
+				reportBox.setEditable(true);
 				threadNumBox.setEditable(false);
 				highNumBox.setEditable(false);
 				compareSpeedupBox.setEnabled(false);
@@ -235,23 +318,15 @@ public class SlowGUI2 extends JFrame
 				try
 				{
 					startTime = System.currentTimeMillis();
-//					new Thread(new StartSlowStep(num_threads,stopping_point,cancel,primes)).start();
-//					new Thread(new StartSlowStep(num_threads,stopping_point,primes)).start();
 					new Thread(new StartSlowStep()).start();
-					
-//					new Thread(new Reporter(primes)).start();
 				} 
 				catch (Exception e1) {
 					e1.printStackTrace();
 					System.exit(1);
-				}
-//				new Thread(new Reporter(primes)).start();
-
-				
+				}	
 			}
 		});
 		cancelButton.addActionListener(new ActionListener() {
-			
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				// cancel and reset gui
@@ -260,37 +335,13 @@ public class SlowGUI2 extends JFrame
 				cancelButton.setEnabled(false);
 				compareSpeedupBox.setEnabled(true);
 				cancel = true;
-//				cancel.set(true);
 				PrimeFindingWorker.cancel = true;
-				
-//				if (totalTime == 0)
-//				{
-					long endTime = System.currentTimeMillis();
-					totalTime = (endTime-startTime)/1000.;
-//				}
-				
-//				// post final report
-//				if (doneFindingPrimes) report = "Finished finding primes below " + highNumBox.getText() + "\n";
-//				else report = "Did not finish run\n";
-//				numPrimesFound = primes.size();
-//				report += "Primes found: " + numPrimesFound +"\n"
-//						+ "Time passed: " + totalTime + " seconds\n";
-//				new Thread(new ReportWriter()).run();
-				
 				try
 				{
 					reportBox.setText(report);
-//					SwingUtilities.invokeAndWait(new Runnable()
-//					{						
-//						@Override
-//						public void run() {
-//							reportBox.setText(report);							
-//						}
-//					});
 				} catch (Exception e1)
 				{
 					e1.printStackTrace();
-					System.exit(1);
 				}
 				
 				// make stoppingPointBox and threadCountBox editable 
@@ -331,7 +382,6 @@ public class SlowGUI2 extends JFrame
 	{
 		JPanel panel = new JPanel();
 		panel.setLayout(new GridLayout(1,1));
-//		JTextArea reportBox = new JTextArea("\n\tReset the above parameters or hit Start");
 		reportBox.setEditable(false);
 		reportBox.setLineWrap(true);
 		reportBox.setWrapStyleWord(true);

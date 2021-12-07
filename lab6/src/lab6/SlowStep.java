@@ -29,6 +29,7 @@ public class SlowStep
 		private volatile static long STOPPING_POINT;
 		private volatile static Set<Integer> nums_checked;
 		private int lastNumAdded = 1;
+		private int iterationNum = 0;
 		
 		public PrimeFindingWorker(int worker_num, int NUM_WORKERS, ConcurrentHashMap<Integer,Boolean> primes,Semaphore semaphore, long STOPPING_POINT, Set<Integer> nums_checked) throws InterruptedException
 		{
@@ -42,29 +43,17 @@ public class SlowStep
 		}
 				
 		@Override
-		public void run() {
+		public void run() {			
 			try {
-				// do the slow step
-//				Thread.sleep(NUM_WORKERS*1000);
-//				System.out.println("Sleeping "+ NUM_WORKERS + " seconds.");
-				
 				System.out.println("Starting worker " + worker_num + " in SlowStep");
 				
 				Set<Integer> numsBelowHalf = new HashSet<Integer>();
+				PrimeFindingWorker.cancel = false; // reset
 				int numToCheck=STARTING_POINT;
 				
-				while (numToCheck<=STOPPING_POINT)
+				while ((numToCheck<=STOPPING_POINT) & (! needToCancel(cancel,worker_num)))
 				{
-					System.out.println("Worker " + worker_num +": checking "+numToCheck + " of " + STOPPING_POINT);
-//					System.out.println("Cancel " + cancel);
-//					System.out.println("size " + primes.size());
-
-					// cancel if supposed to
-					if (needToCancel(cancel,worker_num)) break;
-					System.out.println("Worker " + worker_num + " past break 1, "+numToCheck);
-					
-					// guilty until proven innocent
-					boolean numIsPrime = true;
+//					System.out.println("Worker " + worker_num +": checking "+numToCheck + " of " + STOPPING_POINT);
 					
 					// only need to divide by numbers less than half the size of numToCheck
 					int halfWayPoint = numToCheck/2;
@@ -73,62 +62,43 @@ public class SlowStep
 						numsBelowHalf.add(n);
 					}
 					lastNumAdded = halfWayPoint;
-//					System.out.println("Worker " + worker_num + " looking for " + numToCheck);					
 					
-					// if not every number between 2 and 1/2*numToCheck has been checked for prime, wait till present
-					while(true)
+					// if not every number between 2 and 1/2*numToCheck has been checked for prime (by any worker), wait till present in nums_checked
+					while((! nums_checked.containsAll(numsBelowHalf)) & (! needToCancel(cancel,worker_num)))
 					{
-//						System.out.println("1st check"+nums_checked.containsAll(numsBelowHalf));
-						if (nums_checked.containsAll(numsBelowHalf)) break;
-//						System.out.println("Worker "+ worker_num + "past 1st break for " + numToCheck);
-						if (needToCancel(cancel,worker_num)) break;
-						System.out.println("Worker " + worker_num + " past break 2, "+numToCheck);
-//						System.out.println("Worker "+ worker_num + "past 2nd break for " + numToCheck);
-//						System.out.println("In while loop: Worker " + WORKER_NUM + " Waiting for "+numToCheck + " & " + halfWayPoint + 
-//								"\n\tNUMS_CHECKED Worker " + WORKER_NUM + " " + NUMS_CHECKED + 
-//								"\n\tnumsBelowHalf Worker " + WORKER_NUM + " " + numsBelowHalf);
-						Thread.sleep(100);
+//						System.out.println("Worker " + worker_num + " waiting for other workers to catch up");
+//						Thread.sleep(100);
 					}
-					if (needToCancel(cancel,worker_num)) break;
-					System.out.println("Worker " + worker_num + " past break 3, "+numToCheck);
+					
+					// guilty until proven innocent
+					boolean numIsPrime = true;
 					
 					// check if number is prime by checking its remainder for all known primes that are less than half of numToCheck
 					for (int prime : primes.keySet())
 					{
-						if (needToCancel(cancel,worker_num)) break;
+						// skip math on too big primes (might be no faster...)
 						if (prime>halfWayPoint) continue;
-						
-						else if (numToCheck%prime==0)
-							{
-							numIsPrime = false;
-							break;
-							}
+						// prime check -- break if any factors found
+						else if (numToCheck%prime==0) {numIsPrime = false; break;}
 					}
-					System.out.println("Worker " + worker_num + " past break 4, "+numToCheck);
-					// if none 
-					if (numIsPrime) {
-						primes.put(numToCheck,true);
-//						System.out.println("Worker " + worker_num + " Found prime: "+ numToCheck);					
-					}
-					System.out.println("Worker " + worker_num + " past break 5, "+numToCheck);
+					// add prime number to set of primes
+					if (numIsPrime) {primes.put(numToCheck,true);}
 					
 					// mark as checked
 					nums_checked.add(numToCheck);
 					
-					// Each worker jumps to its next number by adding the number of workers
+					// Iterate by adding the number of workers
 					numToCheck+=NUM_WORKERS;
 					
-					Thread.sleep(1000l);
-					System.out.println("Worker " + worker_num + " past break 1, "+numToCheck);
-				}
-				System.out.println("Worker " + worker_num + " done");
-				
+//					System.out.println("Worker " + worker_num + " finished iteration "+iterationNum);
+					iterationNum++;
+				}				
 			} catch (Exception e) {
 				e.printStackTrace();
 				cancel = true;
 				System.exit(1);
 			} finally {
-				System.out.println("Worker " + worker_num + " releasing semaphore, "+NUM_WORKERS);
+				System.out.println("Worker " + worker_num + " releasing semaphore, numWorkers: "+NUM_WORKERS);
 				semaphore.release();
 			}
 		}
@@ -144,13 +114,13 @@ public class SlowStep
 	{
 		
 	//	int nw = 10;
-		int[] numbers = {1,4};
+		int[] numbers = {1,5};
 		List<Integer> numWorkerList = new ArrayList<Integer>();
 		for (int n : numbers) numWorkerList.add(n);
 		
-		long stop = 10000;
+		long stop = 50000;
 		ConcurrentHashMap<Integer,Boolean> p = new ConcurrentHashMap<Integer,Boolean>();
-		Set<Integer> nc = new HashSet<Integer>();
+		Set<Integer> numChecked = new HashSet<Integer>();
 		Map<Integer,Long> times = new HashMap<Integer,Long>();
 		
 		
@@ -162,7 +132,7 @@ public class SlowStep
 			for (int w=0; w<nw; w++)
 			{
 				semaphore.acquire();
-				PrimeFindingWorker pfw = new PrimeFindingWorker(w, nw, p, semaphore, stop, nc);
+				PrimeFindingWorker pfw = new PrimeFindingWorker(w, nw, p, semaphore, stop, numChecked);
 				new Thread(pfw).start();
 			}
 			
@@ -180,7 +150,7 @@ public class SlowStep
 			
 		//	System.out.println("All workers acquired");
 		//	Thread.sleep(num);
-			times.put(nw, endTime-startTime);
+			times.put(nw, (endTime-startTime)/1000);
 		}
 		
 		// loop through times and report speedup
@@ -190,8 +160,7 @@ public class SlowStep
 		for (int nw : numbers)
 		{
 			System.out.println(nw + "\t\t" + times.get(nw));
-			timeArray[i] = times.get(nw);
-			i++;
+			timeArray[i++] = times.get(nw);
 		}
 		long diff = timeArray[0]-timeArray[1]; 
 		System.out.println("difference\t" + diff);
