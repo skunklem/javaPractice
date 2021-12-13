@@ -45,7 +45,7 @@ public class SlowStep
 		@Override
 		public void run() {			
 			try {
-				System.out.println("Starting worker " + worker_num + " in SlowStep");
+				System.out.println("Starting worker " + worker_num + " in SlowStep. Going to " + STOPPING_POINT);
 				
 				Set<Integer> numsBelowHalf = new HashSet<Integer>();
 				PrimeFindingWorker.cancel = false; // reset
@@ -67,7 +67,7 @@ public class SlowStep
 					while((! nums_checked.containsAll(numsBelowHalf)) & (! needToCancel(cancel,worker_num)))
 					{
 //						System.out.println("Worker " + worker_num + " waiting for other workers to catch up");
-//						Thread.sleep(100);
+						Thread.sleep(1);
 					}
 					
 					// guilty until proven innocent
@@ -118,16 +118,18 @@ public class SlowStep
 		List<Integer> numWorkerList = new ArrayList<Integer>();
 		for (int n : numbers) numWorkerList.add(n);
 		
-		long stop = 50000;
+		long stop = 20000;
 		ConcurrentHashMap<Integer,Boolean> p = new ConcurrentHashMap<Integer,Boolean>();
 		Set<Integer> numChecked = new HashSet<Integer>();
-		Map<Integer,Long> times = new HashMap<Integer,Long>();
+		Map<Integer,Double> times = new HashMap<Integer,Double>();
 		
 		
 		for (int nw : numbers)
 		{
 			Semaphore semaphore = new Semaphore(nw);
 			long startTime = System.currentTimeMillis();
+			
+			System.out.println("New run, " + nw + " thread(s)");
 			
 			for (int w=0; w<nw; w++)
 			{
@@ -148,22 +150,20 @@ public class SlowStep
 			int numFound = p.size();
 			System.out.println("Found " + numFound + " primes");
 			
-		//	System.out.println("All workers acquired");
-		//	Thread.sleep(num);
-			times.put(nw, (endTime-startTime)/1000);
+			times.put(nw, (endTime-startTime)/1000.);
 		}
 		
 		// loop through times and report speedup
 		System.out.println("num_threads\tTime (sec)");
-		long[] timeArray = new long[2];
+		double[] timeArray = new double[2];
 		int i = 0;
 		for (int nw : numbers)
 		{
 			System.out.println(nw + "\t\t" + times.get(nw));
 			timeArray[i++] = times.get(nw);
 		}
-		long diff = timeArray[0]-timeArray[1]; 
-		System.out.println("difference\t" + diff);
+		double ratio = timeArray[0]/timeArray[1]; 
+		System.out.println("ratio (single:multi):\t" + ratio);
 	}
 
 }
