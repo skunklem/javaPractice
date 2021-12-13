@@ -24,9 +24,6 @@ import lab6.SlowStep.*;
 public class SlowGUI2 extends JFrame
 {
 	private static final long serialVersionUID = -1709315542670506804L;
-//	private volatile static int numPrimesFound = 0;
-//	private volatile static Set<Integer> primes = Collections.synchronizedSet(new HashSet<Integer>());
-//	private volatile static Set<Integer> primes = Collections.synchronizedSet(new ConcurrentHashMap<Integer,Boolean>().keySet());
 	private volatile static ConcurrentHashMap<Integer,Boolean> primes = new ConcurrentHashMap<Integer,Boolean>();
 	private volatile static int num_threads;
 	private volatile static int stopping_point;
@@ -37,9 +34,6 @@ public class SlowGUI2 extends JFrame
 	protected volatile static boolean comparisonIsComplete = false;
 	private volatile static boolean needToResetReportVariables;
 	private volatile static boolean needToUpdateReport = false;
-//	protected static 
-//	public volatile static boolean cancel = false;
-//	private final static AtomicBoolean cancel = new AtomicBoolean(false);
 	private volatile static boolean doneFindingPrimes;
 	private volatile static String report;
 	private volatile static String finalReport;
@@ -48,7 +42,6 @@ public class SlowGUI2 extends JFrame
 	private volatile static Set<Integer> nums_checked = Collections.synchronizedSet(new HashSet<>());
 	private volatile static ConcurrentHashMap<Integer,Boolean> primes1 = new ConcurrentHashMap<Integer,Boolean>();
 	private volatile static Set<Integer> numsChecked1 = Collections.synchronizedSet(new HashSet<>());
-//	private volatile static List<PrimeFindingWorker> workerList = new ArrayList<PrimeFindingWorker>();
 	
 	private volatile static JButton cancelButton = new JButton("Cancel");
 	private volatile static JButton startButton = new JButton("Start");
@@ -126,63 +119,11 @@ public class SlowGUI2 extends JFrame
 		cancelAndReport(finalReport);
 	}
 	
-//	private static class ReportWriter implements Runnable
-//	{
-//		//FIND a way to cancel report writer
-//		
-//		int numThreads;
-//		ConcurrentHashMap<Integer, Boolean> primesSet;
-//		Set<Integer> numsCheckedSet;
-//		public ReportWriter(int numThreads,ConcurrentHashMap<Integer, Boolean> primesSet,Set<Integer> numsCheckedSet)
-//		{
-//			this.numThreads = numThreads;
-//			this.numsCheckedSet = numsCheckedSet;
-//			this.primesSet = primesSet;
-//		}
-//		@Override
-//		public void run()
-//		{
-//			while(! cancel)
-//			{
-//				try
-//				{
-//					long timeSoFar = System.currentTimeMillis()-startTime;
-//					int numsChecked = numsCheckedSet.size() + 1; //(+1 because 1 isn't included in the Set)
-//					report = "Running " + numThreads + " workers...\n"
-//							+ "\ttime passed: " + timeSoFar/1000 + " seconds\n"
-//							+ "\tnumbers checked: " + numsChecked + "\n"
-//							+ "\tprimes found: " + primesSet.size() + "\n";
-//					SwingUtilities.invokeLater(new Runnable()
-//					{						
-//						@Override
-//						public void run() {
-//							if (reportBox.isEditable()) reportBox.setText(report);
-//						}
-//					});
-//					Thread.sleep(1000); // no point in updating report any faster
-//				} 
-//				catch (Exception e) 
-//				{
-//					e.printStackTrace();
-//					pressCancelButtonFromThread();
-//				}
-//			}
-//		}
-//	}
-	
 	private static class ReportWriter implements Runnable
 	{
-		//FIND a way to cancel report writer
-		
 		int numThreads;
 		ConcurrentHashMap<Integer, Boolean> primesSet;
 		Set<Integer> numsCheckedSet;
-//		public ReportWriter(int numThreads,ConcurrentHashMap<Integer, Boolean> primesSet,Set<Integer> numsCheckedSet)
-//		{
-//			this.numThreads = numThreads;
-//			this.numsCheckedSet = numsCheckedSet;
-//			this.primesSet = primesSet;
-//		}
 		
 		@Override
 		public void run()
@@ -270,7 +211,6 @@ public class SlowGUI2 extends JFrame
 					
 					new Thread(new ReportWriter()).start();
 					needToUpdateReport = true;
-//					new Thread(new ReportWriter(numberOfWorkers,primes,nums_checked)).start();
 					
 					int returnedWorkers = 0;
 					while (returnedWorkers < numberOfWorkers)
@@ -321,7 +261,6 @@ public class SlowGUI2 extends JFrame
 						
 						Semaphore semaphore = new Semaphore(numberOfWorkers);
 						startTime = System.currentTimeMillis();
-//						new Thread(new ReportWriter()).start();
 						
 						for (int workerNum=0; workerNum<numberOfWorkers; workerNum++)
 						{
@@ -330,12 +269,10 @@ public class SlowGUI2 extends JFrame
 							if (numberOfWorkers == 1)
 							{
 								new Thread(new PrimeFindingWorker(0,numberOfWorkers,primes1,semaphore,stopping_point,numsChecked1)).start();
-//								new Thread(new ReportWriter(numberOfWorkers,primes1,numsChecked1)).start();
 							}
 							else
 							{
 								new Thread(new PrimeFindingWorker(workerNum, numberOfWorkers, primes, semaphore, stopping_point, nums_checked)).start();
-//								new Thread(new ReportWriter(numberOfWorkers,primes,nums_checked)).start();
 							}						
 						}
 						needToUpdateReport = true;	
@@ -375,17 +312,12 @@ public class SlowGUI2 extends JFrame
 						doneFindingPrimes = true;
 						cancelAndWriteComparisonReport();
 					}
+				}
+				// make sure this report comes after other report
+				cancelAndWriteComparisonReport();
 				
-					
-					
-					}
-
-					// make sure this report comes after other report
-	//				Thread.sleep(200);
-					cancelAndWriteComparisonReport();
-					
-					// sanity check
-					if (! (primes1.size()==primes.size())) System.out.println("Different numbers of primes found. One run may not have completed");
+				// sanity check
+				if (! (primes1.size()==primes.size())) System.out.println("Different numbers of primes found. One run may not have completed");
 			}
 			catch (Exception e)
 			{
@@ -410,10 +342,8 @@ public class SlowGUI2 extends JFrame
 				// refresh everything
 				totalTime = 0;
 				cancel = false;
-//				cancel.set(false);
 				PrimeFindingWorker.cancel = false;
 				needToResetReportVariables = true;
-//				comparisonIsComplete = false;
 				primes = new ConcurrentHashMap<Integer,Boolean>();
 				primes1 = new ConcurrentHashMap<Integer,Boolean>();
 				nums_checked = Collections.synchronizedSet(new HashSet<>());
@@ -426,10 +356,8 @@ public class SlowGUI2 extends JFrame
 				highNumBox.setEditable(false);
 				compareSpeedupBox.setEnabled(false);
 				stopping_point = Integer.valueOf(highNumBox.getText());
-//				int numThreads = Integer.valueOf(threadNumBox.getText());
 				num_threads = Integer.valueOf(threadNumBox.getText());
 				System.out.println(Integer.valueOf(threadNumBox.getText()));
-//				workerList = new ArrayList<PrimeFindingWorker>();
 				try
 				{
 					startTime = System.currentTimeMillis();
@@ -456,16 +384,7 @@ public class SlowGUI2 extends JFrame
 				compareSpeedupBox.setEnabled(true);
 				cancel = true;
 				needToUpdateReport = false;
-				PrimeFindingWorker.cancel = true;
-//				try
-//				{
-//					reportBox.setText(report);
-//				} catch (Exception e1)
-//				{
-//					e1.printStackTrace();
-//				}
-				
-				// make stoppingPointBox and threadCountBox editable 
+				PrimeFindingWorker.cancel = true;				
 				threadNumBox.setEditable(true);
 				highNumBox.setEditable(true);
 				
@@ -486,12 +405,6 @@ public class SlowGUI2 extends JFrame
 		panel.add(threadNumBox);
 		panel.add(compareSpeedupBox);
 		panel.add(highNumBox);
-//		JTextField threadDirections = new JTextField("Desired number of threads");
-//		JTextField highNumDirections = new JTextField("Pick a high number");
-//		JTextField threadNumBox = new JTextField("1");
-//		threadNumBox.setText("1");
-//		JTextField highNumBox = new JTextField("200");
-//		highNumBox.setText("200");
 		
 		threadDirections.setEditable(false);
 		highNumDirections.setEditable(false);

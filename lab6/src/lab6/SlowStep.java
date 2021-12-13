@@ -113,7 +113,6 @@ public class SlowStep
 	public static void main(String[] args) throws Exception
 	{
 		
-	//	int nw = 10;
 		int[] numbers = {1,5};
 		List<Integer> numWorkerList = new ArrayList<Integer>();
 		for (int n : numbers) numWorkerList.add(n);
