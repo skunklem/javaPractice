@@ -17,25 +17,6 @@ import weka.classifiers.functions.MultilayerPerceptron;
 import weka.classifiers.trees.RandomForest;
 
 public class LinearPredict {
-//	private final Instances snpData;
-	
-//	private final Instances getInstancesFromDataSource(DataSource source) throws Exception
-//	{
-//		Instances dataSet = source.getDataSet();
-//		dataSet.setClassIndex(dataSet.numAttributes()-1); // predicting last column
-//		return dataSet;	
-//	}
-	
-//	public LinearPredict(DataSource snpARFF) throws Exception
-//	{
-//		Instances dataSet = snpARFF.getDataSet();
-//		dataSet.setClassIndex(dataSet.numAttributes()-1); // predicting last column
-//		this.snpData = dataSet;	
-//	}
-//		LinearPredict lp = new LinearPredict(trainingData);
-//		System.out.println(lp.snpData);	
-	
-	
 	
 	public static void main(String[] args) throws Exception
 	{
